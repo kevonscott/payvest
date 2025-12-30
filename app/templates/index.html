@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="welcome-header">
+  <h1>Pay vs Invest Analyzer</h1>
+  <p class="subtitle">See how paying off debt or investing your money impacts your future wealth. Enter your loans and investment details below!</p>
+</div>
+<form action="/simulate" method="post" class="form">
+  {% set fd = form_data if form_data is defined else {} %}
+  <section class="card loans-card">
+    <h2 class="card-title">Loans</h2>
+    <div class="help-text" style="margin-bottom:1rem;">
+      <strong>Tip:</strong> For each loan, enter the <b>current remaining balance</b>
+      and <b>months left</b> on the loan. The simulation always starts from today.
+      (If your loan started in the past, do not enter the original amount or term—
+      use the current values.)
+    </div>
+    <div id="loans">
+      {% set loan_fields = [] %}
+      {% for k in fd.keys() if k.startswith('loan_amount_') %}
+        {% set idx = k.split('_')[-1] %}
+        {% set loan_fields = loan_fields + [idx] %}
+      {% endfor %}
+      {% if loan_fields|length == 0 %}
+        {% set loan_fields = ['0'] %}
+      {% endif %}
+      {% for idx in loan_fields %}
+      <div class="loan-row">
+        <label>Amount ($)<input type="number" name="loan_amount_{{ idx }}" min="0" step="0.01" required value="{{ fd.get('loan_amount_' ~ idx, '') }}"></label>
+        <label>APR (%)<input type="number" name="apr_{{ idx }}" min="0" max="100" step="0.01" required value="{{ fd.get('apr_' ~ idx, '') }}"></label>
+        <label>Term (months)<input type="number" name="term_months_{{ idx }}" min="1" step="1" required value="{{ fd.get('term_months_' ~ idx, '') }}"></label>
+        <button type="button" class="remove-loan">Remove</button>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" id="add-loan" class="add-loan-btn">+ Add loan</button>
+  </section>
+
+  <section class="card invest-card">
+    <h2 class="card-title">Investment</h2>
+    <label>Initial investment balance ($)
+      <input type="number" name="initial_investment" min="0" step="0.01" value="{{ fd.get('initial_investment', 0) }}">
+      <div class="help-text">Money you already have invested</div>
+    </label>
+    <label>Total monthly budget ($)
+      <input type="number" name="monthly_budget" min="0" step="0.01" value="{{ fd.get('monthly_budget', 0) }}">
+      <div class="help-text">This is the total amount you have available each month for loan payments and investing. The simulator will deduct required minimum loan payments first, then split the remainder between extra loan payments and investing according to your chosen strategy.</div>
+    </label>
+    <label>Expected annual return
+      <div class="range-container">
+        <input type="range" name="annual_return" min="0" max="15" step="0.1" value="{{ fd.get('annual_return', 6) }}" oninput="annualReturnOut.value = this.value">
+  <output name="annualReturnOut">{{ fd.get('annual_return', 6) }}</output>%
+      </div>
+      <div class="help-text">Historical stock market average is ~7-10%</div>
+    </label>
+    <label>Annual investment fees
+      <div class="range-container">
+  <input type="range" name="annual_fee_pct" min="0" max="3" step="0.1" value="{{ fd.get('annual_fee_pct', 0) }}" oninput="feePctOut.value = this.value">
+  <output name="feePctOut">{{ fd.get('annual_fee_pct', 0) }}</output>%
+      </div>
+      <div class="help-text">Management fees charged by your investment provider</div>
+    </label>
+  </section>
+
+  <section>
+    <!-- Removed extra monthly budget field, now handled by total monthly budget above -->
+    <label>When paying loans, prioritize by:
+      <select name="debt_strategy">
+        <option value="proportional" {% if fd.get('debt_strategy') == 'proportional' %}selected{% endif %}>Split evenly across all loans</option>
+        <option value="avalanche" {% if fd.get('debt_strategy') == 'avalanche' %}selected{% endif %}>Highest interest rate first (saves most money)</option>
+        <option value="snowball" {% if fd.get('debt_strategy') == 'snowball' %}selected{% endif %}>Smallest balance first (psychological wins)</option>
+      </select>
+      <div class="help-text">Strategy for how extra payments get distributed among multiple loans</div>
+    </label>
+    <label>Time horizon (years)
+  <input type="number" name="years" min="1" max="50" step="1" value="{{ fd.get('years', 10) }}">
+      <div class="help-text">How many years to compare the strategies</div>
+    </label>
+  </section>
+
+  <section>
+    <h2>Split Strategy</h2>
+    <label>For the "split" scenario, percent to invest
+      <div class="range-container">
+  <input type="range" name="split_pct_invest" min="0" max="100" step="1" value="{{ fd.get('split_pct_invest', 50) }}" oninput="splitOut.value = this.value">
+  <output name="splitOut">{{ fd.get('split_pct_invest', 50) }}</output>%
+      </div>
+      <div class="help-text">We'll test 0% (all to loans), 100% (all to investing), and this split.</div>
+      <div class="help-text"><strong>Important:</strong> The simulator always applies required minimum loan payments each month. "100% investing" means all extra discretionary budget goes to investing — it does not skip scheduled loan payments.</div>
+    </label>
+  </section>
+
+  <section>
+    <h2>Risk Analysis (Advanced)</h2>
+    <label>How many scenarios to test
+  <input type="number" name="monte_carlo_runs" min="100" max="10000" step="100" value="{{ fd.get('monte_carlo_runs', 1000) }}">
+      <div class="help-text">More scenarios = more accurate results but slower (1000 is good)</div>
+    </label>
+    <label>Market volatility (how much returns vary)
+      <div class="range-container">
+  <input type="range" name="return_volatility" min="5" max="30" step="1" value="{{ fd.get('return_volatility', 15) }}" oninput="volOut.value = this.value">
+  <output name="volOut">{{ fd.get('return_volatility', 15) }}</output>%
+      </div>
+      <div class="help-text">15% = typical stock market ups and downs, 5% = very stable</div>
+    </label>
+  </section>
+
+  <div class="actions">
+    <button type="submit">Run simulation</button>
+  </div>
+</form>
+{% endblock %}

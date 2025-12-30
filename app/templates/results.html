@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<header style="margin-bottom:1.5rem;text-align:center">
+  <h1 style="font-size:2.2rem;font-weight:700;color:#0b5cff;margin-bottom:0.2em">payvest</h1>
+  <div style="font-size:1.2rem;color:#222">Pay vs Invest Analyzer</div>
+</header>
+
+
+{% if error_message %}
+  <div class="alert alert-danger" style="margin-bottom:1.5rem;">
+    <strong>Error:</strong> {{ error_message }}
+  </div>
+{% endif %}
+
+
+<h2 style="margin-bottom:1.2rem">Results ({{ cfg.horizon_years }} years)</h2>
+
+{% set num_loans = input_summary.get('num_loans', 0) %}
+{% if num_loans > 0 %}
+<section class="input-summary" style="margin-bottom:1.2rem;padding:1rem;border:1px solid #e0e0e0;border-radius:6px;background:#f8faff">
+  <h3 style="margin-top:0;color:#0b5cff;font-size:1.1rem">Input Summary</h3>
+  <ul style="list-style:none;padding-left:0;font-size:1rem">
+    <li><strong>Number of loans:</strong> {{ num_loans }}</li>
+    <li><strong>Total loan principal:</strong> ${{ '%.2f'|format(input_summary.get('total_loan_principal', 0.0)) }}</li>
+    <li><strong>Estimated total scheduled interest:</strong> ${{ '%.2f'|format(input_summary.get('total_scheduled_interest', 0.0)) }}</li>
+    <li><strong>Total monthly budget:</strong> ${{ '%.2f'|format(input_summary.get('monthly_budget', 0.0)) }}</li>
+    {% if num_loans > 0 %}
+      <li><strong>Loan terms:</strong>
+        <ul style="list-style:none;padding-left:0;margin:0;">
+        {% set loan_years = input_summary.get('loan_years', []) %}
+        {% set loan_terms = input_summary.get('loan_terms', []) %}
+        {% for i in range(loan_years|length) %}
+          <li>Loan {{ i+1 }}: {{ loan_years[i] }} years ({{ loan_terms[i] }} months)</li>
+        {% endfor %}
+        </ul>
+      </li>
+
+    {% endif %}
+  </ul>
+</section>
+{% endif %}
+
+
+{# Only show net worth summary and recommendation if best_scenario is not None #}
+{% if best_scenario %}
+<div style="margin:1.5rem 0 2rem 0;font-size:1.15rem;text-align:center">
+  <span style="color:#0b5cff;font-weight:600">Best scenario:</span>
+  <span style="font-weight:500">{{ best_scenario.name }}</span>
+  with net worth of <strong>${{ '%.2f'|format(best_scenario.monte_carlo.median_net_worth if best_scenario.monte_carlo else best_scenario.final_net_worth) }}</strong> after {{ cfg.horizon_years }} years.
+</div>
+
+<section class="recommendation" style="margin-bottom:1.5rem">
+  <h3>Recommendation</h3>
+  <p>
+    Based on {{ "Monte Carlo median" if best_scenario.monte_carlo else "deterministic" }} net worth,
+    the best scenario is <strong>{{ best_scenario.name }}</strong>
+    with net worth of <strong>${{ '%.2f'|format(best_scenario.monte_carlo.median_net_worth if best_scenario.monte_carlo else best_scenario.final_net_worth) }}</strong> after {{ cfg.horizon_years }} years.
+  </p>
+  {% if best_scenario.monte_carlo %}
+  <p>
+    With {{ cfg.return_volatility * 100 }}% return volatility, there's a {{ '%.1f'|format(best_scenario.monte_carlo.success_probability * 100) }}%
+    chance of positive net worth. The 90% confidence interval is
+    ${{ '%.2f'|format(best_scenario.monte_carlo.percentile_10) }} to ${{ '%.2f'|format(best_scenario.monte_carlo.percentile_90) }}.
+  </p>
+  {% endif %}
+  <p class="note">
+    Note: Debt strategy is <strong>{{ cfg.debt_strategy }}</strong>.
+    {% if cfg.investment.annual_fee_pct > 0 %}Annual fees of {{ cfg.investment.annual_fee_pct * 100 }}% included.{% endif %}
+    This analysis {{ "uses Monte Carlo simulation with" if cfg.monte_carlo_runs > 1 else "assumes constant rates and ignores" }}
+    return volatility{{ " but may not reflect" if cfg.monte_carlo_runs > 1 else ". Consider" }} taxes, correlation, and behavioral factors.
+  </p>
+</section>
+{% endif %}
+
+<p class="help-text"><strong>Note:</strong> Required minimum loan payments are always applied each month. If you choose to allocate all extra budget to investing, scheduled loan payments are still made.</p>
+
+{% if result %}
+<section class="summary">
+  <div class="summary-row" style="display:flex;flex-wrap:wrap;gap:2rem;justify-content:center;margin-bottom:2rem">
+    {% for key, scenario in result.items() %}
+    <div class="card" style="flex:1 1 340px;max-width:360px;padding:1rem;background:#f8faff;border-radius:8px;border:1px solid #e0e0e0;margin-bottom:1rem;min-width:320px;">
+      <h3 style="margin-bottom:0.5rem;text-align:center">{{ scenario.name }}</h3>
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div class="deterministic" style="background:#eef6ff;padding:0.5rem 0.75rem;border-radius:6px">
+          <h4 style="margin:0 0 0.5rem 0;font-size:1rem;color:#0b5cff;text-align:center">Deterministic Result</h4>
+          <ul style="list-style:none;padding-left:0;font-size:1rem;margin:0">
+            <li><strong>Investment balance:</strong> ${{ '%.2f'|format(scenario.investment_balance) }}</li>
+            <li><strong>Loans remaining:</strong> ${{ '%.2f'|format(scenario.loans_remaining_balance) }}</li>
+            <li><strong>Final net worth:</strong> ${{ '%.2f'|format(scenario.final_net_worth) }}</li>
+          </ul>
+        </div>
+        {% if scenario.monte_carlo %}
+        <div class="monte-carlo" style="background:#f5f5fa;padding:0.5rem 0.75rem;border-radius:6px">
+          <h4 style="margin:0 0 0.5rem 0;font-size:1rem;color:#4ad991;text-align:center">Monte Carlo Analysis ({{ cfg.monte_carlo_runs }} runs)</h4>
+          <ul style="list-style:none;padding-left:0;font-size:1rem;margin:0">
+            <li><strong>Mean net worth:</strong> ${{ '%.2f'|format(scenario.monte_carlo.mean_net_worth) }}</li>
+            <li><strong>Median net worth:</strong> ${{ '%.2f'|format(scenario.monte_carlo.median_net_worth) }}</li>
+            <li><strong>10th percentile:</strong> ${{ '%.2f'|format(scenario.monte_carlo.percentile_10) }}</li>
+            <li><strong>90th percentile:</strong> ${{ '%.2f'|format(scenario.monte_carlo.percentile_90) }}</li>
+            <li><strong>Success rate:</strong> {{ '%.1f'|format(scenario.monte_carlo.success_probability * 100) }}%</li>
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+
+{% if result %}
+<section>
+  <div style="margin-bottom:1rem">
+    <button id="toggleViewBtn" style="padding:.5rem 1rem;border-radius:4px;border:1px solid #0b5cff;background:#fff;color:#0b5cff;cursor:pointer">Show Table</button>
+  </div>
+  <div id="tableView" style="display:none;">
+    {% for key, scenario in result.items() %}
+    <h3>{{ scenario.name }} — Yearly breakdown</h3>
+    <table>
+      <thead style="background:#eef6ff">
+        <tr>
+          <th style="border-right:1px solid #d0d8e0;padding:0.5em 1em;text-align:left">Year</th>
+          <th style="border-right:1px solid #d0d8e0;padding:0.5em 1em;text-align:left">Loan interest</th>
+          <th style="border-right:1px solid #d0d8e0;padding:0.5em 1em;text-align:left">Loan principal</th>
+          <th style="border-right:1px solid #d0d8e0;padding:0.5em 1em;text-align:left">Loan balance</th>
+          <th style="border-right:1px solid #d0d8e0;padding:0.5em 1em;text-align:left">Invested total</th>
+          <th style="border-right:1px solid #d0d8e0;padding:0.5em 1em;text-align:left">Investment returns</th>
+          <th style="padding:0.5em 1em;text-align:left">Investment balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for y in scenario.yearly %}
+        <tr>
+          <td style="border-right:1px solid #e0e0e0;padding:0.4em 1em">{{ y.year }}</td>
+          <td style="border-right:1px solid #e0e0e0;padding:0.4em 1em">${{ '%.2f'|format(y.loan_interest_paid) }}</td>
+          <td style="border-right:1px solid #e0e0e0;padding:0.4em 1em">${{ '%.2f'|format(y.loan_principal_paid) }}</td>
+          <td style="border-right:1px solid #e0e0e0;padding:0.4em 1em">${{ '%.2f'|format(y.loan_balance_end) }}</td>
+          <td style="border-right:1px solid #e0e0e0;padding:0.4em 1em">${{ '%.2f'|format(y.invested_total) }}</td>
+          <td style="border-right:1px solid #e0e0e0;padding:0.4em 1em">${{ '%.2f'|format(y.investment_returns) }}</td>
+          <td style="padding:0.4em 1em">${{ '%.2f'|format(y.investment_balance_end) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endfor %}
+  </div>
+  <div id="pieChartView" style="display:block;text-align:center">
+    <div style="display:flex;flex-wrap:wrap;gap:2rem;justify-content:center">
+      {% for key, scenario in result.items() %}
+      <div style="flex:1 1 320px;max-width:340px;padding:1rem;background:#f8faff;border-radius:8px;border:1px solid #e0e0e0;margin-bottom:1rem">
+        <h4 style="margin-bottom:0.5rem">{{ scenario.name }}</h4>
+        <div style="font-weight:600;font-size:1.1rem;margin-bottom:0.5rem;color:#222">
+          Total Investment Balance: ${{ '%.2f'|format(scenario.investment_balance) }}
+        </div>
+        <canvas id="investmentPieChart_{{ key }}" width="320" height="320"></canvas>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="/static/chart.js"></script>
+<script>
+  // Prepare pie chart data for all scenarios
+  var pieChartData = {{ pie_chart_data | tojson | safe }};
+
+  // Render pie charts immediately on page load
+  window.addEventListener('DOMContentLoaded', function() {
+    Object.keys(pieChartData).forEach(function(key) {
+      renderInvestmentPieChart(pieChartData[key], 'investmentPieChart_' + key);
+    });
+  });
+
+  document.getElementById('toggleViewBtn').addEventListener('click', function() {
+    const tableView = document.getElementById('tableView');
+    const pieChartView = document.getElementById('pieChartView');
+    if (tableView.style.display !== 'none') {
+      tableView.style.display = 'none';
+      pieChartView.style.display = 'block';
+      setTimeout(function() {
+        Object.keys(pieChartData).forEach(function(key) {
+          renderInvestmentPieChart(pieChartData[key], 'investmentPieChart_' + key);
+        });
+      }, 50);
+      this.textContent = 'Show Table';
+    } else {
+      tableView.style.display = 'block';
+      pieChartView.style.display = 'none';
+      this.textContent = 'Show Pie Chart';
+    }
+  });
+</script>
+
+
+
+<form action="/" method="post" style="margin-top:1.5rem">
+  <input type="hidden" name="form_data_json" value='{{ form_data_json | safe }}'>
+  <button type="submit" style="padding:.5rem 1rem;border-radius:4px;border:1px solid #0b5cff;background:#fff;color:#0b5cff;cursor:pointer">Go back to analysis</button>
+</form>
+{% endif %}
+{% endblock %}
