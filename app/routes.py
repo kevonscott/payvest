@@ -1,6 +1,7 @@
 import json
 import logging
 from flask import Blueprint, render_template, request
+from datetime import datetime
 from .models.finance import (
     LoanInput,
     InvestmentInput,
@@ -23,8 +24,18 @@ from typing import TypeVar
 
 Num = TypeVar("Num", int, float)
 
+
 bp = Blueprint("main", __name__)
 logger = logging.getLogger(__name__)
+
+# Production health check endpoint
+@bp.route("/healthz", methods=["GET"])
+def healthz():
+    """
+    Health check endpoint for production monitoring.
+    Returns 200 OK and a simple JSON response.
+    """
+    return {"status": "ok"}, 200
 
 
 @bp.route("/", methods=["GET", "POST"])
@@ -47,7 +58,7 @@ def index():
                     str_form_data,
                 )
                 form_data = {}
-    return render_template("index.html", form_data=form_data)
+    return render_template("index.html", form_data=form_data, year=datetime.now().year)
 
 
 @bp.post("/simulate")
@@ -304,4 +315,5 @@ def simulate():
         form_data=form_dict,
         form_data_json=json.dumps(form_dict),
         error_message=error_message,
+        year=datetime.now().year,
     )

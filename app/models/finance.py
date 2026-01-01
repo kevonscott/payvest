@@ -176,8 +176,8 @@ def _simulate_single_run(
     loan_rates = [_monthly_rate(loan.apr) for loan in cfg.loans]
     loan_terms = [loan.term_months for loan in cfg.loans]
     base_payments = [
-        _amortized_payment(p, r, t) if t > 0 else 0.0
-        for p, r, t in zip(loan_balances, loan_rates, loan_terms)
+        _amortized_payment(balance, rate, term) if term > 0 else 0.0
+        for balance, rate, term in zip(loan_balances, loan_rates, loan_terms)
     ]
 
     # Check that the monthly budget is sufficient to cover minimum loan payments

@@ -11,6 +11,14 @@
     <main>
       {% block content %}{% endblock %}
     </main>
+    <footer style="margin-top:2em; padding:1em 0; text-align:center; background:#f8f9fa; color:#444; font-size:0.95em; border-top:1px solid #e0e0e0;">
+      <div>
+        &copy; {{ year }} Kevon Scott. All rights reserved.
+      </div>
+      <div>
+        <a href="https://github.com/kevonscott/payvest/issues" target="_blank" rel="noopener" style="color:#007bff; text-decoration:underline;">Report bugs, issues, or feedback on GitHub</a>
+      </div>
+    </footer>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
   </body>
 </html>

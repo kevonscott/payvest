@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "payvest"
-version = "0.1.0"
+version = "0.1.1"
 description = "Pay vs Invest Analyzer with Monte Carlo simulation"
-authors = [{name = "payvest", email = "kevon-dev@outlook.com"}]
+authors = [{name = "Kevon Scott", email = "kevon-dev@outlook.com"}]
 readme = "README.md"
 license = {text = "The Unlicense"}
 requires-python = ">=3.12"

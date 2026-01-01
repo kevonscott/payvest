@@ -6,27 +6,27 @@ uv pip install -e .
 
 ## 2. Run Gunicorn server (recommended for production)
 
-# Using entrypoint script (preferred)
-./entrypoint.sh
+# Directly using Gunicorn
+gunicorn --bind=0.0.0.0 --timeout 600 "app:create_app()"
 
-# Or directly with Gunicorn
+# Or Gunicorn via uv
 uv run gunicorn --config gunicorn.conf.py
 
 ## 3. Environment variables
 - Set FLASK_ENV=production for production mode
-- Optionally set HOST, PORT, WORKERS in entrypoint.sh
+- Optionally set HOST, PORT, WORKERS
 
 ## 4. Cloud deployment notes
-- Azure, AWS, GCP, PythonAnywhere: Use entrypoint.sh or gunicorn.conf.py
+- Azure, AWS, GCP, PythonAnywhere
 - Ensure static files are served by a reverse proxy (nginx, Apache, etc.)
 - For HTTPS, configure SSL at the proxy/load balancer layer
 
 ## 5. Health check
-- Endpoint: / (index)
+- Endpoint: /healthz
 - Status: 200 OK if app is running
 
 ## 6. Scaling
-- Adjust WORKERS in entrypoint.sh or gunicorn.conf.py for concurrency
+- Adjust WORKERS flag or gunicorn.conf.py for concurrency
 
 ## 7. Logging
 - Access and error logs are sent to stdout/stderr (container-friendly)
