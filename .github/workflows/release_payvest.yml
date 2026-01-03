@@ -5,8 +5,11 @@
 name: Build and deploy Python app to Azure Web App - payvest
 
 on:
-  release:
-    types: [published]
+  # release:
+  #   types: [published]
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
